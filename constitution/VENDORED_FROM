@@ -1,2 +1,2 @@
-symphony-forge @ 2a1d285628c391775e99eb4cb806f2befa7a295d
+symphony-forge @ 75e0fbff54f1a549f4c2e0d5323b098cae29930a
 Update by re-vendoring from the harness repo; do not edit in place.

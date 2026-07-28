@@ -1,5 +1,5 @@
 {
-  "harness_commit": "2a1d285628c391775e99eb4cb806f2befa7a295d",
+  "harness_commit": "75e0fbff54f1a549f4c2e0d5323b098cae29930a",
   "files": {
     ".agents/scripts/check_agents_hygiene.py": "bbfda3eb84548114eb4cd5cf17af46747de5c2c895e4519397f1d4d9d8fb76a0",
     ".agents/scripts/check_dual_runtime.py": "e33936d5c3f2adeec6df6b0728b5b60352a4128d628d431845bdea3ed2b78816",
@@ -24,7 +24,7 @@
     ".agents/scripts/forge_cli/phase.py": "fcf78c38d5936caf935e83499b45ba1066a0410378d49151ef136256a9ee1773",
     ".agents/scripts/forge_cli/plans.py": "44dcb7a09cdc0d35e8b91688b4f4bf473cb5cc96a5fdfffe06956b8f15fe8ebd",
     ".agents/scripts/forge_cli/roadmap.py": "60270eef47f4479804df816921e427c59e2735152f5ad79f6d84350aa00798eb",
-    ".agents/scripts/forge_cli/scaffold.py": "d3f67461bfa0b13605a0a04cabaa0a2a5f9831ae982732631dc7e960c0af303b",
+    ".agents/scripts/forge_cli/scaffold.py": "a2eafbde495fa671efed3436e874029235cb0258bc9ca89e04818013c8cff4b7",
     ".agents/scripts/forge_cli/scratchpad.py": "11e1f1c3971cd57e4b6da8def288379c187074be95b0aa3e8aecae8cd746c9d3",
     ".agents/scripts/forge_cli/signal.py": "f17cab724bd46c2783200df81975c8f83ee91f3b80cf9910a5732af76ad7af58",
     ".agents/scripts/forge_cli/stages.py": "d726089b4d17af5b96ec7ef37da03e383ca7d14f57fa0ced5de95c9453a8b96e",
