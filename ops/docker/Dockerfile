@@ -9,6 +9,7 @@
 #
 #   node:24-trixie-slim @ 2026-10 (Node 24.22.0 "Krypton" LTS; Debian 13.7)
 ARG NODE_IMAGE=node:24-trixie-slim@sha256:a6155384446670e9719bdc4fd0ebe4d4b29fb32a8d6aa523da3547a6cfbcf22c
+ARG UBUNTU_IMAGE=ubuntu:26.04@sha256:c098726dd9b9733f3e885f8de0ef375206a311b0a317eadc40d347b1115fb944
 ARG PYTHON_IMAGE=python:3.13-slim-trixie@sha256:cf50a4f6ac4f026458b08d5222023d700ac806410dff5e9ca8728fa44f2b850f
 
 # Full Chrome (including headed/CDP support), not the headless-only shell.
@@ -70,12 +71,17 @@ RUN npm prune --omit=dev --ignore-scripts
 # Contains: production node_modules, dist/ (incl. migration SQL and migrator),
 # the built contracts/sdk workspace dist, and the entrypoint.
 # ---------------------------------------------------------------------------
-FROM ${PYTHON_IMAGE} AS runtime
+FROM ${PYTHON_IMAGE} AS python-runtime
+
+FROM ${UBUNTU_IMAGE} AS runtime
+
+COPY --from=python-runtime /usr/local /usr/local
+RUN ldconfig
 
 # Refresh pip's vendored urllib3/msgpack as well; provenance/reproducer lives in
 # ops/docker/security/pip. Preserve pip's real version and wheel RECORD hashes.
 COPY vendor/pip-26.2.2-py3-none-any.whl /tmp/pip-26.2.2-py3-none-any.whl
-RUN echo '5199d6346369986d1b7eb31d083c943aff0caf3c12a9086193469a033d1ee232  /tmp/pip-26.2.2-py3-none-any.whl' | sha256sum -c - \
+RUN echo 'e2ea38fcf3cac60020a6bce296e7f4af9f729501c8271f0eab202e6d9adb8fd2  /tmp/pip-26.2.2-py3-none-any.whl' | sha256sum -c - \
     && python3 -m pip install --no-cache-dir --no-deps --upgrade --force-reinstall /tmp/pip-26.2.2-py3-none-any.whl \
     && rm -f /usr/local/lib/python3.13/ensurepip/_bundled/pip-*.whl \
     && cp /tmp/pip-26.2.2-py3-none-any.whl /usr/local/lib/python3.13/ensurepip/_bundled/ \
@@ -100,7 +106,16 @@ ENV NODE_ENV=production \
 # Supply browser shared libraries without installing Debian's older Chromium,
 # desktop helper programs or systemd services. Go-built tools ship as binaries.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
+      libstdc++6 \
+      libssl3t64 \
+      libbz2-1.0 \
+      liblzma5 \
+      libsqlite3-0 \
+      libffi8 \
+      libreadline8t64 \
+      zlib1g \
       libatomic1 \
       libasound2t64 \
       libatk-bridge2.0-0t64 \
@@ -128,7 +143,6 @@ RUN apt-get update \
       bubblewrap \
       socat \
       ripgrep \
-      gosu \
     && rm -rf /var/lib/apt/lists/*
 # bubblewrap backs runtime.sandbox.provider=sandbox_runtime (the whole-runner
 # OS sandbox on Linux). Creating its namespaces inside Docker additionally
@@ -138,12 +152,8 @@ RUN apt-get update \
 # search binary for agent turns, and libatomic1 is required by newer Node builds
 # on small Ubuntu/Debian hosts.
 
-# Maintained Canonical CVE-2026-6653 backport on the exact Debian source line.
-# Keep the real package/version and patch provenance; do not suppress scanners.
-COPY vendor/libxml2-gantry1-amd64.deb /tmp/libxml2-gantry1-amd64.deb
-RUN echo '0dfe4d8deed44dd675eb014e6a8e4c0d822ae99bb8c3a8e9dc9eeb20eb8af80e  /tmp/libxml2-gantry1-amd64.deb' | sha256sum -c - \
-    && dpkg -i /tmp/libxml2-gantry1-amd64.deb \
-    && rm /tmp/libxml2-gantry1-amd64.deb
+# Ubuntu 26.04 supplies an official libxml2 line unaffected by CVE-2026-6653.
+# Do not install the older Debian local backport in this runtime.
 
 # The runtime image never installs packages. Drop the package-manager payload
 # inherited from the Node base image so bundled npm CVEs do not fail image scans.
@@ -152,7 +162,8 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 # Non-root runtime user. The base image already ships a `node` user (uid 1000);
 # create the default runtime-state dir owned by it. Mounted state directories
 # must be prepared offline; the entrypoint never starts as root or changes owners.
-RUN groupadd --gid 1000 node \
+RUN if getent passwd 1000 >/dev/null; then userdel -r "$(getent passwd 1000 | cut -d: -f1)"; fi \
+    && groupadd --gid 1000 node \
     && useradd --uid 1000 --gid node --shell /bin/bash --create-home node \
     && install -d -o node -g node "${GANTRY_HOME}"
 

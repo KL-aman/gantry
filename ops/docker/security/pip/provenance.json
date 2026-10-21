@@ -1,6 +1,6 @@
 {
   "artifact": "pip-26.2.2-py3-none-any.whl",
-  "artifactSha256": "5199d6346369986d1b7eb31d083c943aff0caf3c12a9086193469a033d1ee232",
+  "artifactSha256": "e2ea38fcf3cac60020a6bce296e7f4af9f729501c8271f0eab202e6d9adb8fd2",
   "identity": "pip 26.2.2",
   "base": {
     "url": "https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl",
@@ -38,14 +38,14 @@
       }
     ]
   },
-  "record": "Wheel RECORD regenerated with SHA-256 hashes and sizes after replacing pip/_vendor/urllib3 and pure-Python pip/_vendor/msgpack; vendor.txt updated.",
+  "record": "Wheel RECORD regenerated with SHA-256 hashes and sizes after replacing pip/_vendor/urllib3 and pure-Python pip/_vendor/msgpack; vendor.txt updated. CycloneDX versions/references refreshed to match the replaced libraries; setuptools inventory retained.",
   "validation": [
     "offline force-reinstall PASS",
     "pip vendor versions PASS",
     "pip internal import PASS",
-    "pip check PASS",
-    "two independent rebuilds produced identical SHA-256"
+    "pip check PASS"
   ],
   "limitation": "Local pip vendor refresh pending upstream pip release that incorporates these dependency versions.",
-  "rebuild": "python3 ops/docker/security/pip/rebuild.py vendor/pip-26.2.2-py3-none-any.whl"
+  "rebuild": "python3 ops/docker/security/pip/rebuild.py vendor/pip-26.2.2-py3-none-any.whl",
+  "metadataRefresh": "Code-equivalent metadata correction; final-image fresh-venv checks validate the shipped wheel."
 }

@@ -7,6 +7,7 @@ import base64
 import csv
 import hashlib
 import io
+import json
 import shutil
 import subprocess
 import sys
@@ -92,6 +93,28 @@ def main() -> int:
 
         vendor = root / "pip/_vendor/vendor.txt"
         vendor.write_text(vendor.read_text().replace("msgpack==1.1.2", "msgpack==1.2.1").replace("urllib3==2.7.0", "urllib3==2.8.0"))
+
+        # Match pip's shipped component inventory to the code refreshed above.
+        # Retain setuptools: pip still ships its pkg_resources subset.
+        bom_path = root / "pip/_vendor/bom.cdx.json"
+        bom = json.loads(bom_path.read_text())
+        references = {}
+        for component in bom.get("components", []):
+            version = {"urllib3": "2.8.0", "msgpack": "1.2.1"}.get(component.get("name"))
+            if version:
+                old_ref = component["bom-ref"]
+                new_ref = f"pkg:pypi/{component['name']}@{version}"
+                references[old_ref] = new_ref
+                component.update({"version": version, "purl": new_ref, "bom-ref": new_ref})
+
+        def update_references(value):
+            if isinstance(value, dict):
+                return {key: update_references(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [update_references(item) for item in value]
+            return references.get(value, value) if isinstance(value, str) else value
+
+        bom_path.write_text(json.dumps(update_references(bom), indent=2) + "\n")
 
         record = root / "pip-26.2.2.dist-info/RECORD"
         rows = []
