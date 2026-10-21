@@ -1,0 +1,92 @@
+{
+  "clean_apply": {
+    "command": "patch -p1 --dry-run --forward < CVE-2026-6653.patch",
+    "files": [
+      "SAX2.c",
+      "entities.c",
+      "include/libxml/entities.h",
+      "include/libxml/parser.h",
+      "parser.c",
+      "parserInternals.c",
+      "testrecurse.c"
+    ],
+    "log_sha256": "1c2c127ee5107c156782ec5b51bc758f1bf44000493e115ffc086aa4c8782ba3",
+    "result": "pass",
+    "target_tree": "Debian source after all trixie deb13u3 quilt patches"
+  },
+  "compatibility": {
+    "basis": "Canonical ships the adapted patch on the same upstream 2.9.14 ABI line. The built package preserves the Debian binary package name, dependency set, SONAME, and complete defined dynamic symbol/version set.",
+    "existing_public_field_offsets_preserved": true,
+    "package_name_preserved": true,
+    "public_structs_appended": [
+      "xmlEntity.flags",
+      "xmlEntity.expandedSize",
+      "xmlParserInput.parentConsumed",
+      "xmlParserInput.entity"
+    ],
+    "soname_preserved": true
+  },
+  "artifact": {
+    "architecture": "amd64",
+    "builder_image": "debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad",
+    "deb_file": "libxml2_2.12.7+dfsg+really2.9.14-2.1+deb13u3+gantry1_amd64.deb",
+    "deb_sha256": "0dfe4d8deed44dd675eb014e6a8e4c0d822ae99bb8c3a8e9dc9eeb20eb8af80e",
+    "deb_size_bytes": 699816,
+    "installed_library_sha256": "2672651fa7b1ceb06d58df6cd6f39e091452a57984187909a8fb1f939e545e6b",
+    "package_version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3+gantry1",
+    "platform": "linux/amd64",
+    "source_date_epoch": 1782210600
+  },
+  "cve": "CVE-2026-6653",
+  "debian_tracker": "https://security-tracker.debian.org/tracker/CVE-2026-6653",
+  "maintained_backport": {
+    "debian_tar_sha256": "f0f8de7efd6370a8fe39a5c88e9a2ee9350ee2882ccc8aaf8ae8f30fbde34ff4",
+    "debian_tar_sha256_from_dsc": "f0f8de7efd6370a8fe39a5c88e9a2ee9350ee2882ccc8aaf8ae8f30fbde34ff4",
+    "debian_tar_url": "https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/libxml2/2.9.14+dfsg-1.3ubuntu3.8/libxml2_2.9.14+dfsg-1.3ubuntu3.8.debian.tar.xz",
+    "distribution": "Ubuntu 24.04 LTS noble-security",
+    "dsc_sha256": "699272267e3a2f7581a51d7289c0ba524e9785dc76db877e43eb8c9da9532cbb",
+    "dsc_url": "https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/libxml2/2.9.14+dfsg-1.3ubuntu3.8/libxml2_2.9.14+dfsg-1.3ubuntu3.8.dsc",
+    "fixed_source_version": "2.9.14+dfsg-1.3ubuntu3.8",
+    "patch_path_in_source": "debian/patches/CVE-2026-6653.patch",
+    "patch_sha256": "6c2b8a7b6fa470efcb1854e5c73bd7e1ae1663d8b111e27ce9232bbc1fe44f54",
+    "source_package": "libxml2",
+    "ubuntu_advisory": "https://ubuntu.com/security/CVE-2026-6653",
+    "ubuntu_change_notice": "https://lists.ubuntu.com/archives/jammy-changes/2026-June/047025.html"
+  },
+  "scanner_expectation": "Version-based scanners may continue to report CVE-2026-6653 because Debian has no fixed version mapping for this custom backport; retain the finding and attach patch provenance rather than suppressing it.",
+  "status": "built and focused validation passed",
+  "target": {
+    "distribution": "Debian 13 trixie",
+    "dsc_sha256": "04b1da890535b11e3db231f39114ee09e643badceff79441d749d0ca78efaaa5",
+    "runtime_binary_package": "libxml2",
+    "soname": "libxml2.so.2",
+    "source_package": "libxml2",
+    "source_version": "2.12.7+dfsg+really2.9.14-2.1+deb13u3"
+  },
+  "upstream": {
+    "fix_commit": "463bbeeca1805b5c4828f50d0fefc4eebaf620df",
+    "fix_url": "https://gitlab.gnome.org/GNOME/libxml2/-/commit/463bbeeca1805b5c4828f50d0fefc4eebaf620df",
+    "github_mirror_patch_sha256": "1d0dd8a82e734830e2610f8bd7ccd21b02507206dcf9f9ed5ede28abe48b686d"
+  },
+  "validation": {
+    "candidate_package_control": {
+      "architecture": "amd64",
+      "dependencies_match_debian_baseline": true,
+      "package": "libxml2"
+    },
+    "exported_dynamic_symbols": {
+      "comparison": "nm -D --defined-only --with-symbol-versions",
+      "result": "identical to Debian deb13u3 baseline"
+    },
+    "installed_package_regression": {
+      "library": "/usr/lib/x86_64-linux-gnu/libxml2.so.2.9.14",
+      "result": "Total 1 tests, no errors",
+      "test": "patched testrecurse compiled and run against the library installed from the produced deb"
+    },
+    "soname": {
+      "candidate": "libxml2.so.2",
+      "debian_baseline": "libxml2.so.2",
+      "result": "identical"
+    }
+  }
+}

@@ -9,6 +9,18 @@
 #
 #   node:24-trixie-slim @ 2026-10 (Node 24.22.0 "Krypton" LTS; Debian 13.7)
 ARG NODE_IMAGE=node:24-trixie-slim@sha256:a6155384446670e9719bdc4fd0ebe4d4b29fb32a8d6aa523da3547a6cfbcf22c
+ARG PYTHON_IMAGE=python:3.13-slim-trixie@sha256:cf50a4f6ac4f026458b08d5222023d700ac806410dff5e9ca8728fa44f2b850f
+
+# Full Chrome (including headed/CDP support), not the headless-only shell.
+# This production image targets linux/amd64; Google publishes linux64 here.
+FROM ${PYTHON_IMAGE} AS chrome-for-testing
+ADD --checksum=sha256:e6c94490f0b6b337225aeb2d2a5034858516b7017356980ba94f5176d8774a50 \
+  https://storage.googleapis.com/chrome-for-testing-public/156.0.8078.47/linux64/chrome-linux64.zip /tmp/chrome.zip
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && mkdir -p /opt/chrome-for-testing \
+    && unzip -q /tmp/chrome.zip -d /opt/chrome-for-testing \
+    && rm -rf /tmp/chrome.zip /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
 # Stage 1: deps — install ALL dependencies (incl. dev) for the build.
@@ -58,24 +70,61 @@ RUN npm prune --omit=dev --ignore-scripts
 # Contains: production node_modules, dist/ (incl. migration SQL and migrator),
 # the built contracts/sdk workspace dist, and the entrypoint.
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS runtime
+FROM ${PYTHON_IMAGE} AS runtime
+
+# Refresh pip's vendored urllib3/msgpack as well; provenance/reproducer lives in
+# ops/docker/security/pip. Preserve pip's real version and wheel RECORD hashes.
+COPY vendor/pip-26.2.2-py3-none-any.whl /tmp/pip-26.2.2-py3-none-any.whl
+RUN echo '5199d6346369986d1b7eb31d083c943aff0caf3c12a9086193469a033d1ee232  /tmp/pip-26.2.2-py3-none-any.whl' | sha256sum -c - \
+    && python3 -m pip install --no-cache-dir --no-deps --upgrade --force-reinstall /tmp/pip-26.2.2-py3-none-any.whl \
+    && rm -f /usr/local/lib/python3.13/ensurepip/_bundled/pip-*.whl \
+    && cp /tmp/pip-26.2.2-py3-none-any.whl /usr/local/lib/python3.13/ensurepip/_bundled/ \
+    && chmod 0644 /usr/local/lib/python3.13/ensurepip/_bundled/pip-26.2.2-py3-none-any.whl \
+    && sed -i 's/_PIP_VERSION = "26\.2\.1"/_PIP_VERSION = "26.2.2"/' /usr/local/lib/python3.13/ensurepip/__init__.py \
+    && grep -qx '_PIP_VERSION = "26.2.2"' /usr/local/lib/python3.13/ensurepip/__init__.py \
+    && rm -f /tmp/pip-26.2.2-py3-none-any.whl
+
+COPY --from=deps /usr/local/bin/node /usr/local/bin/node
+COPY --from=chrome-for-testing /opt/chrome-for-testing /opt/chrome-for-testing
+RUN ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/local/bin/chromium \
+    && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/local/bin/chromium-browser \
+    && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/bin/chromium \
+    && ln -s /opt/chrome-for-testing/chrome-linux64/chrome /usr/bin/chromium-browser
 
 ENV NODE_ENV=production \
     GANTRY_HOME=/var/lib/gantry \
     GANTRY_BOOTSTRAP_SETTINGS_IF_MISSING=1
 
-# Skill-script interpreters. Skills are distributed as data artifacts in any
-# language; the image carries the interpreters their scripts need at runtime.
-# python3 covers the common non-Node skill payload. Deliberately NOT included:
-# pip usage at runtime (fleet workers never run a package manager — Python
-# package installs belong to a future bake lane, see TODOS.md) and the Go
-# toolchain (Go-built tools ship as binaries: add the binary here per tool).
+# Retain Python and default venv support from the pinned Python image. The pip
+# seed is updated above as well as the installed pip so fresh venvs stay patched.
+# Supply browser shared libraries without installing Debian's older Chromium,
+# desktop helper programs or systemd services. Go-built tools ship as binaries.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-      python3 \
-      python3-venv \
-      chromium \
       libatomic1 \
+      libasound2t64 \
+      libatk-bridge2.0-0t64 \
+      libatk1.0-0t64 \
+      libatspi2.0-0t64 \
+      libcairo2 \
+      libcups2t64 \
+      libdbus-1-3 \
+      libexpat1 \
+      libgbm1 \
+      libglib2.0-0t64 \
+      libnspr4 \
+      libnss3 \
+      libpango-1.0-0 \
+      libudev1 \
+      libx11-6 \
+      libxcb1 \
+      libxcomposite1 \
+      libxdamage1 \
+      libxext6 \
+      libxfixes3 \
+      libxkbcommon0 \
+      libxrandr2 \
+      fonts-liberation \
       bubblewrap \
       socat \
       ripgrep \
@@ -89,6 +138,13 @@ RUN apt-get update \
 # search binary for agent turns, and libatomic1 is required by newer Node builds
 # on small Ubuntu/Debian hosts.
 
+# Maintained Canonical CVE-2026-6653 backport on the exact Debian source line.
+# Keep the real package/version and patch provenance; do not suppress scanners.
+COPY vendor/libxml2-gantry1-amd64.deb /tmp/libxml2-gantry1-amd64.deb
+RUN echo '0dfe4d8deed44dd675eb014e6a8e4c0d822ae99bb8c3a8e9dc9eeb20eb8af80e  /tmp/libxml2-gantry1-amd64.deb' | sha256sum -c - \
+    && dpkg -i /tmp/libxml2-gantry1-amd64.deb \
+    && rm /tmp/libxml2-gantry1-amd64.deb
+
 # The runtime image never installs packages. Drop the package-manager payload
 # inherited from the Node base image so bundled npm CVEs do not fail image scans.
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
@@ -96,7 +152,9 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 # Non-root runtime user. The base image already ships a `node` user (uid 1000);
 # create the default runtime-state dir owned by it. Mounted state directories
 # must be prepared offline; the entrypoint never starts as root or changes owners.
-RUN install -d -o node -g node "${GANTRY_HOME}"
+RUN groupadd --gid 1000 node \
+    && useradd --uid 1000 --gid node --shell /bin/bash --create-home node \
+    && install -d -o node -g node "${GANTRY_HOME}"
 
 WORKDIR /app
 
