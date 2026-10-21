@@ -190,7 +190,9 @@ RUN sed -i 's/\r$//' /usr/local/bin/gantry-entrypoint \
 # The Ubuntu minimal base has no CA bundle. Retain verified Python/HTTPS access.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /usr/bin/pebble
+# Gantry uses its own entrypoint; Ubuntu's bundled Pebble init is unused.
 USER node
 ENTRYPOINT ["/usr/local/bin/gantry-entrypoint"]
 CMD ["node", "dist/index.js"]
