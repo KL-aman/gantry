@@ -187,6 +187,10 @@ RUN sed -i 's/\r$//' /usr/local/bin/gantry-entrypoint \
 
 # Control port (liveness /healthz, readiness /readyz, internal /metrics) is
 # set by the deployment via GANTRY_CONTROL_PORT; documented, not hardcoded.
+# The Ubuntu minimal base has no CA bundle. Retain verified Python/HTTPS access.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 USER node
 ENTRYPOINT ["/usr/local/bin/gantry-entrypoint"]
 CMD ["node", "dist/index.js"]
