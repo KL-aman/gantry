@@ -7,8 +7,8 @@
 # The base is pinned by manifest-list digest for reproducibility across a rolling
 # deploy. Refresh the digest deliberately (see docs/deployment/aws-terraform.md).
 #
-#   node:24-bookworm-slim @ 2026-06 (Node 24.16.0 "Krypton" LTS)
-ARG NODE_IMAGE=node:24-bookworm-slim@sha256:cb4e8f7c443347358b7875e717c29e27bf9befc8f5a26cf18af3c3dec80e58c5
+#   node:24-trixie-slim @ 2026-10 (Node 24.22.0 "Krypton" LTS; Debian 13.7)
+ARG NODE_IMAGE=node:24-trixie-slim@sha256:a6155384446670e9719bdc4fd0ebe4d4b29fb32a8d6aa523da3547a6cfbcf22c
 
 # ---------------------------------------------------------------------------
 # Stage 1: deps — install ALL dependencies (incl. dev) for the build.
@@ -23,6 +23,8 @@ COPY package.json package-lock.json ./
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 COPY examples/nextjs-workflows/package.json examples/nextjs-workflows/package.json
+COPY vendor/braces-3.0.3.tgz ./vendor/braces-3.0.3.tgz
+COPY vendor/node-forge-1.4.0.tgz ./vendor/node-forge-1.4.0.tgz
 
 # Full install (dev deps included) — needed for tsc + workspace builds.
 # `--ignore-scripts` keeps install hermetic; the prepare hook (husky) is a no-op
@@ -92,9 +94,8 @@ RUN apt-get update \
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Non-root runtime user. The base image already ships a `node` user (uid 1000);
-# create the default runtime-state dir owned by it. The entrypoint also prepares
-# runtime-mounted GANTRY_HOME values such as /srv/reagent/home before dropping
-# privileges, which ECS/EBS mounts need because they arrive root-owned.
+# create the default runtime-state dir owned by it. Mounted state directories
+# must be prepared offline; the entrypoint never starts as root or changes owners.
 RUN install -d -o node -g node "${GANTRY_HOME}"
 
 WORKDIR /app
@@ -117,5 +118,6 @@ RUN sed -i 's/\r$//' /usr/local/bin/gantry-entrypoint \
 
 # Control port (liveness /healthz, readiness /readyz, internal /metrics) is
 # set by the deployment via GANTRY_CONTROL_PORT; documented, not hardcoded.
+USER node
 ENTRYPOINT ["/usr/local/bin/gantry-entrypoint"]
 CMD ["node", "dist/index.js"]
